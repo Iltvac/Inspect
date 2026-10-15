@@ -325,3 +325,8 @@ textarea { width: 100%; resize: vertical; line-height: 1.4; }
 .thumb-add svg { width: 20px; height: 20px; }
 .thumb-add .plus { font-size: 20px; line-height: 1; }
 .paint-photo-list { margin-top: 14px; }
+.plate-input { font-size: 26px; font-weight: 700; letter-spacing: 0.08em; text-align: center; min-height: 58px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; border: 2px solid var(--text); }
+.plate-input.plate-warn { border-color: var(--warn); }
+.optional { border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px; }
+.optional summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; }
+.optional[open] summary { margin-bottom: 10px; }

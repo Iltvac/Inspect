@@ -14,8 +14,8 @@ export const dateRu = (iso: string) =>
 export const numOrNull = (s: string) => (s.trim() === '' ? null : Number(s))
 
 // «Toyota Camry 2018» или «Без названия»
-export function carTitle(i: { make: string | null; model: string | null; year: number | null }) {
-  return [i.make, i.model, i.year].filter(Boolean).join(' ') || 'Без названия'
+export function carTitle(i: { make: string | null; model: string | null; year: number | null; plate?: string | null }) {
+  return [i.make, i.model, i.year].filter(Boolean).join(' ') || i.plate || 'Без названия'
 }
 
 // plural(5, ['фото', 'фото', 'фото'])

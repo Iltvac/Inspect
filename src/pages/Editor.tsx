@@ -120,25 +120,41 @@ function CarTab({ insp, update }: { insp: Inspection; update: Update }) {
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => update(() => ({ [key]: numOrNull(e.target.value.replace(/\s/g, '')) })),
   })
 
+  const plateOk = insp.plate == null || PLATE_RE.test(insp.plate)
+
   return (
     <div className="form">
+      <Field label="Госномер" hint={plateOk ? 'Можно печатать латиницей или кириллицей, пробелы не нужны' : 'Обычный номер: буква, 3 цифры, 2 буквы, регион. Проверь, всё ли верно'}>
+        <input className={`plate-input${plateOk ? '' : ' plate-warn'}`} value={insp.plate ?? ''} placeholder="А123ВС77"
+          autoCapitalize="characters" autoComplete="off" spellCheck={false}
+          onChange={(e) => { const v = normalizePlate(e.target.value); update(() => ({ plate: v || null })) }} />
+      </Field>
       <div className="grid-2">
         <Field label="Марка"><input {...text('make')} placeholder="Toyota" /></Field>
         <Field label="Модель"><input {...text('model')} placeholder="Camry" /></Field>
       </div>
       <div className="grid-2">
         <Field label="Год"><input type="number" {...num('year')} placeholder="2018" /></Field>
-        <Field label="Госномер"><input {...text('plate', true)} placeholder="А123ВС77" /></Field>
-      </div>
-      <Field label="VIN"><input {...text('vin', true)} maxLength={17} placeholder="17 символов" className="mono" /></Field>
-      <div className="grid-2">
         <Field label="Пробег, км"><input type="number" {...num('mileage')} /></Field>
-        <Field label="Цена продавца, ₽"><input type="number" {...num('price')} /></Field>
       </div>
+      <Field label="Цена продавца, ₽"><input type="number" {...num('price')} /></Field>
       <Field label="Где смотрели"><input {...text('location')} placeholder="Город, адрес или площадка" /></Field>
       <Field label="Для кого подбор" hint="Имя клиента, видно в отчёте"><input {...text('client_name')} /></Field>
+      <details className="optional" open={!!insp.vin}>
+        <summary>VIN (необязательно)</summary>
+        <input {...text('vin', true)} maxLength={17} placeholder="17 символов" className="mono" />
+      </details>
     </div>
   )
+}
+
+// Российский номер: буквы, похожие на латиницу (А В Е К М Н О Р С Т У Х), + цифры региона
+const PLATE_RE = /^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$/
+const LATIN_TO_CYR: Record<string, string> = { A: 'А', B: 'В', E: 'Е', K: 'К', M: 'М', H: 'Н', O: 'О', P: 'Р', C: 'С', T: 'Т', Y: 'У', X: 'Х' }
+
+// «a 123 bc 77» → «А123ВС77»: латиница в кириллицу, без пробелов и лишних знаков
+function normalizePlate(raw: string): string {
+  return raw.toUpperCase().split('').map((ch) => LATIN_TO_CYR[ch] ?? ch).join('').replace(/[^0-9А-ЯЁ]/g, '').slice(0, 9)
 }
 
 // --- Краска ---
