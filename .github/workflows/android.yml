@@ -1,0 +1,82 @@
+# Собирает Android-приложение (APK) после каждого изменения в main
+# и выкладывает его в релиз «latest»: ссылка на скачивание всегда одна и та же.
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Сборка веб-части
+        run: npm run build
+        env:
+          BUILD_TARGET: android
+
+      - name: Android-проект и иконки
+        run: |
+          npx cap add android
+          # Камера нужна для кнопки «Снять» в осмотре
+          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <application#' android/app/src/main/AndroidManifest.xml
+          npx capacitor-assets generate --android
+          npx cap sync android
+
+      # Постоянный ключ подписи: иначе новая версия не установится поверх старой.
+      # Ключ лежит в секретах репозитория (Settings → Secrets and variables → Actions),
+      # в коде его нет, поэтому репозиторий можно сделать публичным.
+      - name: Ключ подписи
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Нет секрета ANDROID_DEBUG_KEYSTORE. Добавь его в Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          mkdir -p ~/.android
+          echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+
+      - name: Сборка APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../inspect.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inspect-apk
+          path: inspect.apk
+
+      - name: Релиз «latest»
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest inspect.apk \
+            --title "Автоподбор · сборка ${{ github.run_number }}" \
+            --notes "Скачай inspect.apk на телефон и установи. Собрано из коммита ${GITHUB_SHA::7}."
